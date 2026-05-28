@@ -140,7 +140,7 @@ export default function Sidebar({ isOpen, onClose }) {
             bg-violet-100 dark:bg-violet-500/10
             text-violet-600 dark:text-violet-400
             border border-violet-200 dark:border-violet-500/20 rounded-full">
-            v1.0.0
+            v2.0.0
           </span>
         </div>
       </aside>

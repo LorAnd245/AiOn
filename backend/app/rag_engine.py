@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from enum import Enum
 import httpx
 from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader, TextLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 try:
     from langchain_huggingface import HuggingFaceEmbeddings
 except ImportError:
@@ -55,10 +55,10 @@ class RAGEngine:
     ]
 
     def __init__(self):
-        self.embeddings = HuggingFaceEmbeddings(
-            model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
-            model_kwargs={'device': 'cpu'},
-        )
+        # Delay creating the heavy HuggingFaceEmbeddings instance until first use
+        self.embeddings = None
+        self._hf_model_name = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+        self._hf_model_kwargs = {'device': 'cpu'}
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=settings.RAG_CHUNK_SIZE,
             chunk_overlap=settings.RAG_CHUNK_OVERLAP,
@@ -66,6 +66,32 @@ class RAGEngine:
             length_function=len,
         )
         print(f"🔧 RAG Engine ready | chunk={settings.RAG_CHUNK_SIZE} overlap={settings.RAG_CHUNK_OVERLAP}")
+
+    def _ensure_embeddings(self):
+        """Initialize the HuggingFaceEmbeddings instance on first use.
+
+        Raises a RuntimeError with a helpful message if the model cannot be downloaded.
+        """
+        if self.embeddings is not None:
+            return
+        try:
+            try:
+                from langchain_huggingface import HuggingFaceEmbeddings as _HFE
+            except Exception:
+                from langchain_community.embeddings import HuggingFaceEmbeddings as _HFE
+
+            self.embeddings = _HFE(
+                model_name=self._hf_model_name,
+                model_kwargs=self._hf_model_kwargs,
+            )
+        except Exception as e:
+            msg = (
+                f"Failed to initialize HuggingFace embeddings ({self._hf_model_name}): {e}\n"
+                "If you're offline, pre-download the model or configure a local embedding.\n"
+                "Run: python -c \"from sentence_transformers import SentenceTransformer; SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')\""
+            )
+            print(msg)
+            raise RuntimeError(msg)
 
     def _should_skip_rag(self, query: str) -> bool:
         q = query.lower().strip()
@@ -99,6 +125,8 @@ class RAGEngine:
             })
 
         path = self.get_vector_store_path(agent_id)
+        # Ensure embeddings are ready before interacting with FAISS
+        self._ensure_embeddings()
         if os.path.exists(path):
             vs = FAISS.load_local(path, self.embeddings, allow_dangerous_deserialization=True)
             vs.add_documents(chunks)
@@ -142,6 +170,8 @@ class RAGEngine:
             return SearchAnalysis([], False, 999.0, {}, "no_documents", 0.0)
 
         try:
+            # Ensure embeddings are initialized before loading/searching
+            self._ensure_embeddings()
             vs = FAISS.load_local(path, self.embeddings, allow_dangerous_deserialization=True)
             raw = vs.similarity_search_with_score(query, k=k)
 

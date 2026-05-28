@@ -97,12 +97,18 @@ export default function Chat() {
   const [loading, setLoading] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
 
+  const messagesContainerRef = useRef(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const streamingIdRef = useRef(null);
 
   const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = messagesContainerRef.current;
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, []);
 
   useEffect(() => { scrollToBottom(); }, [messages]);
@@ -257,10 +263,10 @@ export default function Chat() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen flex bg-slate-100 dark:bg-[#0c0e1a]">
+    <div className="h-screen flex bg-slate-100 dark:bg-[#0c0e1a] overflow-hidden">
 
       {/* SIDEBAR */}
-      <div className="w-64 bg-slate-50 dark:bg-[#0c0e1a] border-r border-slate-200 dark:border-white/5 flex flex-col flex-shrink-0">
+      <div className="w-64 h-screen bg-slate-50 dark:bg-[#0c0e1a] border-r border-slate-200 dark:border-white/5 flex flex-col flex-shrink-0">
         <div className="p-4 border-b border-slate-200 dark:border-white/5">
           <Link
             to={isAdmin ? '/dashboard' : '/user-dashboard'}
@@ -355,7 +361,7 @@ export default function Chat() {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
+            <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
               {messages.map((msg, i) => (
                 <Message key={msg.id || i} msg={msg} />
               ))}

@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import DashboardLayout from '../components/layout/DashboardLayout';
 
 export default function Profile() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
 
   return (
     <DashboardLayout>
@@ -56,7 +56,7 @@ export default function Profile() {
           </div>
           <div className="mt-5 p-4 bg-cyan-50 dark:bg-cyan-500/5 border border-cyan-200 dark:border-cyan-500/15 rounded-xl">
             <p className="text-xs text-cyan-600 dark:text-cyan-400">
-              💡 Per modificare le tue informazioni, contatta un amministratore.
+              💡 {isAdmin ? 'Per modificare le tue informazioni, contatta un nostro gestore.' : 'Per modificare le tue informazioni, contatta un amministratore.'}
             </p>
           </div>
         </div>
